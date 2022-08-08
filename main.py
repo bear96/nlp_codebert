@@ -129,6 +129,15 @@ def predict(test_dataset,args):
             gen_code = tokenizer.decode(code,skip_special_tokens=True)
             temp.append(gen_code)
         prediction.append(temp)
+        
+    c=0
+    for i in range(len(predictions)):
+        pred = predictions.predicted_codes.iloc[i]
+        for item in pred:
+        if item == predictions.actual_codes.iloc[i]:
+            c+=1
+            break
+    print("Prediction accuracy: {0:.4f}".format(c/len(predictions)))
 
     predictions = pd.DataFrame({'predicted_expansions': prediction,'actual_expansions': test_data[:1024].expansions})
 
