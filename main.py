@@ -163,3 +163,5 @@ def main():
     else:
         predict(test_data,args)
        
+if __name__ == "__main__":
+    main()
