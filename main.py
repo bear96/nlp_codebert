@@ -13,8 +13,7 @@ from torchinfo import summary
 from sklearn import metrics, model_selection
 from matplotlib import pyplot as plt 
 from tqdm import tqdm 
-import gc
-from model import NLPTransformer
+import model
 import beam
 import process_dataset
 
@@ -41,7 +40,7 @@ def train(train_dataset,val_dataset,args):
         device = torch.device('cpu')
     print("Device: ",device)
 
-    model = NLPTransformer(tokenizer= tokenizer, config=config,beam_size= 10,max_length=args.blocksize,
+    NLPmodel = model.NLPTransformer(tokenizer= tokenizer, config=config,beam_size= 10,max_length=args.blocksize,
                            sos_id=tokenizer.cls_token_id,eos_id=tokenizer.sep_token_id).to(device)
 
     torch.cuda.empty_cache()
@@ -50,7 +49,7 @@ def train(train_dataset,val_dataset,args):
     val_dataloader = DataLoader(val_dataset,batch_size=args.batch_size,shuffle = False,num_workers=2)
     epochs= args.epoch
 
-    optimizer_grouped_parameters = [{'params': [p for n, p in model.named_parameters()],}]
+    optimizer_grouped_parameters = [{'params': [p for n, p in NLPmodel.named_parameters()],}]
     optimizer = optim.AdamW(optimizer_grouped_parameters, lr= 0.00005)
     
     train_loss_graph = []
@@ -65,8 +64,8 @@ def train(train_dataset,val_dataset,args):
             target_ids = batch[2].to(device)
             target_mask = batch[3].to(device)#target_ids.ne(tokenizer.pad_token_id)
             labels=batch[1].to(device)
-            model.train()
-            loss,_,_ = model(source_ids=source_ids,source_mask=source_mask.float(),target_ids=target_ids,target_mask=target_mask.float())
+            NLPmodel.train()
+            loss,_,_ = NLPmodel(source_ids=source_ids,source_mask=source_mask.float(),target_ids=target_ids,target_mask=target_mask.float())
             loss.backward()
             optimizer.step()
             tr_loss += loss.item()
@@ -79,15 +78,15 @@ def train(train_dataset,val_dataset,args):
             target_ids = batch[2].to(device)
             target_mask = batch[3].to(device)
             labels=batch[1].to(device)
-            model.eval()
+            NLPmodel.eval()
             with torch.no_grad():
-                v_loss,_,_ = model(source_ids=source_ids,source_mask=source_mask,target_ids=target_ids,target_mask=target_mask)
+                v_loss,_,_ = NLPmodel(source_ids=source_ids,source_mask=source_mask,target_ids=target_ids,target_mask=target_mask)
                 val_loss +=v_loss.item()
             epoch_val_loss = val_loss/len(val_dataloader)
         print("Epoch: {0:.4f} Train loss: {0:.4f} Val loss: {0:.4f}".format(idx+1,epoch_loss,epoch_val_loss))
         train_loss_graph.append(epoch_loss)
         val_loss_graph.append(epoch_val_loss)
-        torch.save(model.state_dict(), 'CodeBERTmodel-nlp-{}.pkl'.format(idx+1))
+        torch.save(NLPmodel.state_dict(), 'CodeBERTmodel-nlp-{}.pkl'.format(idx+1))
         if epoch_val_loss>epoch_loss:
             print("Model is overfitting...\nStopping training")
             break
@@ -103,7 +102,7 @@ def train(train_dataset,val_dataset,args):
 def predict(test_dataset,args):
     config= RobertaConfig.from_pretrained('microsoft/codebert-base')
     tokenizer = RobertaTokenizer.from_pretrained('microsoft/codebert-base',config=config)
-    model = NLPTransformer(tokenizer= tokenizer, config=config,beam_size= 10,max_length=args.blocksize,
+    NLPmodel = model.NLPTransformer(tokenizer= tokenizer, config=config,beam_size= 10,max_length=args.blocksize,
                 sos_id=tokenizer.cls_token_id,eos_id=tokenizer.sep_token_id).to(device)
 
     model.load_state_dict(torch.load('CodeBERTmodel-nlp-{}.pkl'.format(args.epoch)))
