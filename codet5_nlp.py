@@ -164,7 +164,7 @@ def main():
 
     
     if args.do_train:
-        train(train_dataset,val_dataset,args)
+        train(train_data,val_data,args)
     else:
         predict(test_data,args)
        
