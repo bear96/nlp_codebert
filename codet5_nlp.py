@@ -142,7 +142,7 @@ def main():
     parser.add_argument("--blocksize", default = 30, type = int, help = "Maximum length of sequence. Default = 30")
     parser.add_argument("--batch_size", default = 32, type = int, help = "Batch size for training and validation. Default = 32")
     parser.add_argument("--epoch", default = 10, type = int, help = "Number of epochs for training. Default = 10.")
-    parser.add_argument("--do_train", type = bool, required = True, help = "True if doing training, False if doing testing.")
+    parser.add_argument("--do_train",action = "store_true", help = "True if doing training, False if doing testing.")
     
     args = parser.parse_args()
     
