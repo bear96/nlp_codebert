@@ -35,7 +35,7 @@ def score(true_expansion: str, pred_expansion: str) -> int:
     """
     return int(true_expansion == pred_expansion)
   
-def train(train_dataset,val_dataset,args):
+def train(train_data,val_data,args):
 
     model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-base').to(device)
     tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
@@ -47,21 +47,25 @@ def train(train_dataset,val_dataset,args):
     print("Device: ",device)
 
     torch.cuda.empty_cache()
+    print("Training data...")
+    train_dataset = process_dataset.NLPData(tokenizer, train_data[:10000])
+    print("Validation data...")
+    val_dataset = process_dataset.NLPData(tokenizer,val_data[:10000])
 
-    train_dataloader = DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True,num_workers=2)
-    val_dataloader = DataLoader(val_dataset,batch_size=args.batch_size,shuffle = False,num_workers=2)
+    train_dataloader = DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True,num_workers=1)
+    val_dataloader = DataLoader(val_dataset,batch_size=args.batch_size,shuffle = False,num_workers=1)
     epochs= args.epoch
 
-    optimizer_grouped_parameters = [{'params': [p for n, p in NLPmodel.named_parameters()],}]
+    optimizer_grouped_parameters = [{'params': [p for n, p in model.named_parameters()],}]
     optimizer = optim.AdamW(optimizer_grouped_parameters, lr= 0.00005)
     
     train_loss_graph = []
     val_loss_graph = []
-    for idx in range(epochs):
+    for idx in range(args.epoch):
       tr_loss = 0.0
       val_loss = 0.0
       
-      for batch in train_dataloader:
+      for batch in tqdm(train_dataloader):
         optimizer.zero_grad()
         input_ids = batch[1].to(device) #input IDs
         target_ids = batch[0].to(device) #targets
@@ -110,17 +114,18 @@ def train(train_dataset,val_dataset,args):
     plt.legend(["Training Loss","Validation Loss"])
     plt.savefig('Plot-Loss-nlp-CodeT5.png')
 
-def predict(test_dataset,args):
+def predict(test_data,args):
     model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-base').to(device)
     tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
 
-    model.load_state_dict(torch.load('CodeT5model-{}.pkl'.format(args.epoch)))
+    model.load_state_dict(torch.load('CodeT5model-{}.pkl'.format(args.stopping_no)))
 
+    print("Testing data...")
     test_dataset = process_dataset.NLPData(tokenizer, test_data[:1024])
 
     batch_size = 1
     torch.cuda.empty_cache()
-    test_dataloader = DataLoader(test_dataset,batch_size=batch_size,num_workers=1)
+    test_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,num_workers=1)
     preds = []
     for batch in tqdm(test_dataloader):
         input_ids = batch[0].to(device)
@@ -131,7 +136,7 @@ def predict(test_dataset,args):
         
 
     predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions})
-    predictions.to_json('Predicted_Expansions_CodeBERT.json')
+    predictions.to_json('Predicted_Expansions_CodeT5.json')
     
     print("Accuracy: ",score(preds,test_data.expansions))
 
@@ -143,6 +148,7 @@ def main():
     parser.add_argument("--batch_size", default = 32, type = int, help = "Batch size for training and validation. Default = 32")
     parser.add_argument("--epoch", default = 10, type = int, help = "Number of epochs for training. Default = 10.")
     parser.add_argument("--do_train",action = "store_true", help = "True if doing training, False if doing testing.")
+    parser.add_argument("--stopping_no", default = 10, type = int, help = "Epoch number where the model stopped training. Used to load last saved model for testing.")
     
     args = parser.parse_args()
     
@@ -155,10 +161,7 @@ def main():
     train_data, val_data = model_selection.train_test_split(dataset[:10000],train_size=0.7)
     val_data, test_data = model_selection.train_test_split(val_data,train_size=0.5)
     
-    print("Training data...")
-    train_dataset = process_dataset.NLPData(tokenizer, train_data)
-    print("Validation data...")
-    val_dataset = process_dataset.NLPData(tokenizer,val_data)
+
     
     if args.do_train:
         train(train_dataset,val_dataset,args)
