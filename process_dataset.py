@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 class InputFeatures(object):
   #to process data into ids and mask for the custom dataloader
