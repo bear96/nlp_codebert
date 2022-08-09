@@ -57,8 +57,7 @@ def train(train_data,val_data,args):
     val_dataloader = DataLoader(val_dataset,batch_size=args.batch_size,shuffle = False,num_workers=1)
     epochs= args.epoch
 
-    optimizer_grouped_parameters = [{'params': [p for n, p in model.named_parameters()],}]
-    optimizer = optim.AdamW(optimizer_grouped_parameters, lr= 0.00005)
+    optimizer = optim.AdamW(model.parameters(), lr= 0.00005)
     
     train_loss_graph = []
     val_loss_graph = []
@@ -70,8 +69,8 @@ def train(train_data,val_data,args):
         optimizer.zero_grad()
         input_ids = batch[0].to(device) #input IDs
         target_ids = batch[2].to(device) #targets
-        source_mask = input_ids.ne(tokenizer.pad_token_id)
-        target_mask = target_ids.ne(tokenizer.pad_token_id)
+        source_mask = batch[1].to(device)
+        target_mask = batch[3].to(device)
 
         model.train()
 
@@ -86,10 +85,10 @@ def train(train_data,val_data,args):
       for batch in val_dataloader:
         model.eval()
 
-        input_ids = batch[1].to(device) #input IDs
-        target_ids = batch[0].to(device) #targets
-        source_mask = input_ids.ne(tokenizer.pad_token_id)
-        target_mask = target_ids.ne(tokenizer.pad_token_id)
+        input_ids = batch[0].to(device) #input IDs
+        target_ids = batch[2].to(device) #targets
+        source_mask = batch[1].to(device)
+        target_mask = batch[3].to(device)
         with torch.no_grad():
           model_out = model(input_ids=input_ids, attention_mask=source_mask,labels=target_ids, decoder_attention_mask=target_mask)
           v_loss = model_out.loss
@@ -127,10 +126,9 @@ def predict(test_data,args):
 
     print("Testing data...")
     test_dataset = process_dataset.NLPData(tokenizer, test_data[:1024])
-
-    batch_size = 1
+    
     torch.cuda.empty_cache()
-    test_dataloader = DataLoader(test_dataset,batch_size=args.batch_size,num_workers=1)
+    test_dataloader = DataLoader(test_dataset,batch_size=1,num_workers=1)
     preds = []
     for batch in tqdm(test_dataloader):
         input_ids = batch[0].to(device)
