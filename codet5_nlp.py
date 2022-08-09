@@ -138,10 +138,10 @@ def predict(test_data,args):
         preds.append(expans)
         
 
-    predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions})
+    predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions[:1024]})
     predictions.to_json('Predicted_Expansions_CodeT5.json')
     
-    print("Accuracy: ",score(preds,test_data.expansions))
+    print("Accuracy: ",score(preds,test_data.expansions[:1024]))
 
     
 def main():
