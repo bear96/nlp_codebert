@@ -37,15 +37,16 @@ def score(true_expansion: str, pred_expansion: str) -> int:
   
 def train(train_data,val_data,args):
 
-    model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-base').to(device)
-    tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
 
     if torch.cuda.is_available():
         device = torch.device('cuda')
     else:
         device = torch.device('cpu')
     print("Device: ",device)
-
+    
+    model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-base').to(device)
+    tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+    
     torch.cuda.empty_cache()
     print("Training data...")
     train_dataset = process_dataset.NLPData(tokenizer, train_data[:10000])
@@ -115,9 +116,13 @@ def train(train_data,val_data,args):
     plt.savefig('Plot-Loss-nlp-CodeT5.png')
 
 def predict(test_data,args):
+    if torch.cuda.is_available:
+        device = 'cuda'
+    else:
+        device = 'cpu'
+    
     model = T5ForConditionalGeneration.from_pretrained('Salesforce/codet5-base').to(device)
     tokenizer = RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
-
     model.load_state_dict(torch.load('CodeT5model-{}.pkl'.format(args.stopping_no)))
 
     print("Testing data...")
