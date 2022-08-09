@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchinfo import summary
+#from torchinfo import summary
 
 from sklearn import metrics, model_selection
 from matplotlib import pyplot as plt 
@@ -37,7 +37,6 @@ def score(true_expansion: str, pred_expansion: str) -> int:
   
 def train(train_data,val_data,args):
 
-
     if torch.cuda.is_available():
         device = torch.device('cuda')
     else:
@@ -49,15 +48,15 @@ def train(train_data,val_data,args):
     
     torch.cuda.empty_cache()
     print("Training data...")
-    train_dataset = process_dataset.NLPData(tokenizer, train_data[:10000])
+    train_dataset = process_dataset.NLPData(tokenizer, train_data)
     print("Validation data...")
-    val_dataset = process_dataset.NLPData(tokenizer,val_data[:10000])
+    val_dataset = process_dataset.NLPData(tokenizer,val_data)
 
     train_dataloader = DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True,num_workers=1)
     val_dataloader = DataLoader(val_dataset,batch_size=args.batch_size,shuffle = False,num_workers=1)
     epochs= args.epoch
 
-    optimizer = optim.AdamW(model.parameters(), lr= 0.00005)
+    optimizer = optim.AdamW(model.parameters(), lr= args.lr)
     
     train_loss_graph = []
     val_loss_graph = []
@@ -125,7 +124,7 @@ def predict(test_data,args):
     model.load_state_dict(torch.load('CodeT5model-{}.pkl'.format(args.stopping_no)))
 
     print("Testing data...")
-    test_dataset = process_dataset.NLPData(tokenizer, test_data[:1024])
+    test_dataset = process_dataset.NLPData(tokenizer, test_data)
     
     torch.cuda.empty_cache()
     test_dataloader = DataLoader(test_dataset,batch_size=1,num_workers=1)
@@ -138,14 +137,14 @@ def predict(test_data,args):
         preds.append(expans)
         
 
-    predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions[:1024]})
+    predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions})
     predictions.to_json('Predicted_Expansions_CodeT5.json')
     
     count = 0
     for i in range(len(preds)):
-        count += score(preds[i],test_data.expansions[i])
+        count += score(preds[i],test_data.expansions.iloc[i])
     
-    print("Accuracy: ",count/1024)
+    print("Accuracy: ",count/len(preds))
 
     
 def main():
@@ -154,25 +153,29 @@ def main():
     parser.add_argument("--blocksize", default = 30, type = int, help = "Maximum length of sequence. Default = 30")
     parser.add_argument("--batch_size", default = 32, type = int, help = "Batch size for training and validation. Default = 32")
     parser.add_argument("--epoch", default = 10, type = int, help = "Number of epochs for training. Default = 10.")
-    parser.add_argument("--do_train",action = "store_true", help = "True if doing training, False if doing testing.")
+    parser.add_argument("--do_train",action = "store_true", help = "Specify if training, unspecified means testing.")
     parser.add_argument("--stopping_no", default = 10, type = int, help = "Epoch number where the model stopped training. Used to load last saved model for testing.")
+    parser.add_argument("--lr", default = 5e-5, type = float, help = "Learning rate of optimizer. Default = 0.00005")
+    parser.add_argument("--test_dir", default = "", type = str, help = "Directory/filename of new test file.")
     
     args = parser.parse_args()
-    
+    print(args)
     
     factors, expansions = load_file(args.data_dir)
     dataset = pd.DataFrame({'factors':factors,'expansions':expansions})
-    print("First five factors-expansions pair")
-    print(dataset.head())
     
-    train_data, val_data = model_selection.train_test_split(dataset[:10000],train_size=0.7)
+    train_data, val_data = model_selection.train_test_split(dataset,train_size=0.7)
     val_data, test_data = model_selection.train_test_split(val_data,train_size=0.5)
     
 
     
-    if args.do_train:
+    if args.do_train == True:
         train(train_data,val_data,args)
+    elif args.do_train == False and args.test_dir =="":
+        predict(test_data,args)
     else:
+        factors, expansions = load_file(args.test_dir)
+        test_data = pd.DataFrame({'factors':factors,'expansions':expansions})
         predict(test_data,args)
        
 if __name__ == "__main__":
