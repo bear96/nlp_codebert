@@ -142,10 +142,10 @@ def predict(test_data,args):
     predictions.to_json('Predicted_Expansions_CodeT5.json')
     
     count = 0
-    for i in range(preds):
+    for i in range(len(preds)):
         count += score(preds[i],test_data.expansions[i])
     
-    print("Accuracy: ",count/1024))
+    print("Accuracy: ",count/1024)
 
     
 def main():
