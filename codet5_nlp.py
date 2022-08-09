@@ -141,7 +141,11 @@ def predict(test_data,args):
     predictions = pd.DataFrame({'predicted_expansions': preds,'actual_expansions': test_data.expansions[:1024]})
     predictions.to_json('Predicted_Expansions_CodeT5.json')
     
-    print("Accuracy: ",score(preds,test_data.expansions[:1024]))
+    count = 0
+    for i in range(preds):
+        count += score(preds[i],test_data.expansions[i])
+    
+    print("Accuracy: ",count/1024))
 
     
 def main():
