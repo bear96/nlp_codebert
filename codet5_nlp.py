@@ -62,14 +62,14 @@ def train(train_data,val_data,args):
     
     train_loss_graph = []
     val_loss_graph = []
-    for idx in range(args.epoch):
+    for idx in range(epochs):
       tr_loss = 0.0
       val_loss = 0.0
       
       for batch in tqdm(train_dataloader):
         optimizer.zero_grad()
-        input_ids = batch[1].to(device) #input IDs
-        target_ids = batch[0].to(device) #targets
+        input_ids = batch[0].to(device) #input IDs
+        target_ids = batch[2].to(device) #targets
         source_mask = input_ids.ne(tokenizer.pad_token_id)
         target_mask = target_ids.ne(tokenizer.pad_token_id)
 
@@ -95,17 +95,17 @@ def train(train_data,val_data,args):
           v_loss = model_out.loss
           val_loss +=v_loss.item()
         epoch_val_loss = val_loss/len(val_dataloader) #validation loss per epoch
-        print("epoch {} train loss {} val loss {}".format(idx+1,epoch_loss,epoch_val_loss))
-        train_loss_graph.append(epoch_loss) 
-        val_loss_graph.append(epoch_val_loss)
-        torch.save(model.state_dict(), 'CodeT5model-{}.pkl'.format(idx+1))
-        #print("Epoch: {0:.4f} Train loss: {0:.4f} Val loss: {0:.4f}".format(idx+1,epoch_loss,epoch_val_loss))
-        train_loss_graph.append(epoch_loss)
-        val_loss_graph.append(epoch_val_loss)
-        #torch.save(NLPmodel.state_dict(), 'CodeBERTmodel-nlp-{}.pkl'.format(idx+1))
-        if epoch_val_loss>epoch_loss:
-            print("Model is overfitting...\nStopping training")
-            break
+      print("epoch {} train loss {} val loss {}".format(idx+1,epoch_loss,epoch_val_loss))
+      train_loss_graph.append(epoch_loss) 
+      val_loss_graph.append(epoch_val_loss)
+      torch.save(model.state_dict(), 'CodeT5model-{}.pkl'.format(idx+1))
+      #print("Epoch: {0:.4f} Train loss: {0:.4f} Val loss: {0:.4f}".format(idx+1,epoch_loss,epoch_val_loss))
+      train_loss_graph.append(epoch_loss)
+      val_loss_graph.append(epoch_val_loss)
+      #torch.save(NLPmodel.state_dict(), 'CodeBERTmodel-nlp-{}.pkl'.format(idx+1))
+      if epoch_val_loss>epoch_loss:
+        print("Model is overfitting...\nStopping training")
+        break
             
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
